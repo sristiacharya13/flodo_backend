@@ -48,3 +48,12 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"message": "Task deleted"}
+
+@app.put("/tasks/{task_id}", response_model=schemas.Task)
+async def update_task(task_id: int, task: schemas.TaskCreate, db: Session = Depends(get_db)):
+    """Handles general task updates (Title, Description, etc.) from Flutter."""
+    result = await crud.update_task_full(db, task_id=task_id, task_update=task)
+    
+    if result is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return result

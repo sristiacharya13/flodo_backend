@@ -86,3 +86,22 @@ def delete_task(db: Session, task_id: int):
         db.commit()
         return True
     return False
+
+async def update_task_full(db: Session, task_id: int, task_update: schemas.TaskCreate):
+    """Requirement: Edit existing tasks with full data update."""
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    
+    if not db_task:
+        return None
+
+    # Optional: Add the 2s delay here if you want it consistent with Create/Status updates
+    # await asyncio.sleep(2) 
+
+    # Extract the data and update the DB model fields
+    update_data = task_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_task, key, value)
+
+    db.commit()
+    db.refresh(db_task)
+    return db_task
