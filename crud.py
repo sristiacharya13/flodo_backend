@@ -99,6 +99,30 @@ async def update_task_full(db: Session, task_id: int, task_update: schemas.TaskC
 
     # Extract the data and update the DB model fields
     update_data = task_update.dict(exclude_unset=True)
+
+    # If the edit request changes status to DONE, apply the same behavior
+    # as the dedicated status endpoint (blocked-by check + recurring duplication).
+    new_status = update_data.get("status")
+    if new_status == models.TaskStatus.DONE and db_task.status != models.TaskStatus.DONE:
+        if db_task.blocked_by_id:
+            blocker = db.query(models.Task).filter(models.Task.id == db_task.blocked_by_id).first()
+            if blocker and blocker.status != models.TaskStatus.DONE:
+                return "BLOCKED"
+
+        if db_task.is_recurring:
+            delta = timedelta(days=1) if db_task.recurring_type == models.RecurringType.DAILY else timedelta(weeks=1)
+            base_due_date = update_data.get("due_date", db_task.due_date)
+            new_task = models.Task(
+                title=update_data.get("title", db_task.title),
+                description=update_data.get("description", db_task.description),
+                due_date=base_due_date + delta,
+                status=models.TaskStatus.TODO,
+                is_recurring=True,
+                recurring_type=update_data.get("recurring_type", db_task.recurring_type),
+                position=db_task.position,
+            )
+            db.add(new_task)
+
     for key, value in update_data.items():
         setattr(db_task, key, value)
 

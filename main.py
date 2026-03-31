@@ -54,6 +54,11 @@ async def update_task(task_id: int, task: schemas.TaskCreate, db: Session = Depe
     """Handles general task updates (Title, Description, etc.) from Flutter."""
     result = await crud.update_task_full(db, task_id=task_id, task_update=task)
     
+    if result == "BLOCKED":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot complete: This task is still blocked by another task."
+        )
     if result is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return result
